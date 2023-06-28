@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/niftynei/glightning/jrpc2"
 	"log"
 	"path/filepath"
+
+	"github.com/niftynei/glightning/jrpc2"
 )
 
 // This file's the one that holds all the objects for the
@@ -1061,6 +1062,8 @@ func (l *Lightning) GetInfo() (*NodeInfo, error) {
 	return &result, err
 }
 
+
+
 type SignedMessage struct {
 	Signature string `json:"signature"`
 	RecId     string `json:"recid"`
@@ -1113,6 +1116,47 @@ func (l *Lightning) CheckMessageVerify(message, zbase, pubkey string) (bool, err
 	err := l.client.Request(&CheckMessageRequest{message, zbase, pubkey}, &result)
 	return result.Verified, err
 }
+
+type OfferRequest struct {
+	Amount string `json:"amount"`
+	Description string `json:"description"`
+}
+
+func (r OfferRequest) Name() string {
+	return "offer"
+}
+type OfferFields struct{
+	OfferId   string `json:"offer_id"`
+	Active    bool   `json:"active"`
+	SingleUse bool   `json:"single_use"`
+	Bolt12    string `json:bolt12`
+	Used      bool   `json:"used"`
+	Created   bool   `json:"created"`
+}
+
+type OfferResult struct {
+	Message string `json:"message"`
+	OfferFields
+}
+
+func (l *Lightning) Offer(amount string, description string) (*OfferResult, error) {
+	if amount == "" {
+		return nil, fmt.Errorf("Must specify amount.")
+	}
+
+	if description == "" {
+		return nil, fmt.Errorf("Must specify a description")
+	}
+
+	var result OfferResult
+
+	err := l.client.Request(&OfferRequest{
+		Amount:      amount,
+		Description: description,
+	}, &result)
+	return &result, err
+}
+
 
 type SendPayRequest struct {
 	Route         []RouteHop `json:"route"`
@@ -2431,6 +2475,9 @@ func init() {
 	// we skip all the Dev-commands
 
 	Lightning_RpcMethods[(&GetInfoRequest{}).Name()] = func() jrpc2.Method { return new(GetInfoRequest) }
+	
+	Lightning_RpcMethods[(&OfferRequest{}).Name()] = func() jrpc2.Method { return new(OfferRequest) }
+
 	Lightning_RpcMethods[(&SignMessageRequest{}).Name()] = func() jrpc2.Method { return new(SignMessageRequest) }
 	Lightning_RpcMethods[(&CheckMessageRequest{}).Name()] = func() jrpc2.Method { return new(CheckMessageRequest) }
 	Lightning_RpcMethods[(&SendPayRequest{}).Name()] = func() jrpc2.Method { return new(SendPayRequest) }
